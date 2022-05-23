@@ -1,0 +1,12 @@
+{
+  "name": "CR_Sandbox",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerStorage": {
+      "MainModule": {
+        "$path": "MainModule"
+      }
+    }
+  }
+}
