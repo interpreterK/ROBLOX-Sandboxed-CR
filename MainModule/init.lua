@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local Storage = game:GetService("ReplicatedStorage")
-local FakePath = Storage:FindFirstChild("DefaultChatSystemChatEvents")
+local RS = game:GetService("RunService")
+local FakePath = Storage:FindFirstChild("DefaultChatSystemChatEvents") or Storage
 
 local resume, create = coroutine.resume, coroutine.create
 local insert, clear = table.insert, table.clear
@@ -21,11 +22,6 @@ local function inew(inst, par, props)
 end
 
 local function initclient(host, client, stand)
-    local function setattrs(s, attrs)
-        for i,v in next, attrs do
-            s:SetAttribute(i,v)
-        end
-    end
     local function WFCOC(Parent, Class)
         local obj = Parent:FindFirstChildOfClass(Class)
         while not obj do
@@ -36,11 +32,7 @@ local function initclient(host, client, stand)
     resume(create(function()
         local localscript = script:FindFirstChildOfClass("LocalScript")
         localscript.Name = client.Name
-        setattrs(localscript, {
-            HostName = host.Name,
-            HostID = host.UserId,
-            Standing = stand
-        })
+        localscript:SetAttribute("Standing", stand)
         localscript.Parent = WFCOC(client, "PlayerGui")
     end))
 end
@@ -63,11 +55,11 @@ local function Server_init(Player)
     Character.Archivable = false
     local Root = StorageCharacter:WaitForChild("HumanoidRootPart")
     local Standing = Root.Position
-    local CharacterRemote = inew("RemoteFunction", FakePath or Storage, {Name = "GetCharacterInit"})
+    local CharacterRemote = inew("RemoteFunction", FakePath, {Name = "GetCharacterInit"})
     CharacterRemote.OnServerInvoke = function()
-        return StorageCharacter:Clone()
+        return {Player = Player, Character = StorageCharacter:Clone()}
     end
-    local ServerRemote = inew("RemoteEvent", FakePath or Storage, {Name = "SendCharacterData"})
+    local ServerRemote = inew("RemoteEvent", FakePath, {Name = "SendCharacterData"})
     ServerRemote.OnServerEvent:Connect(function(player, ...)
         if player.UserId == Player.UserId then
             local arg1 = ({...})[1]
@@ -104,6 +96,12 @@ local function Server_init(Player)
             end))
         end
         initclient(Player, player, Standing)
+    end))
+    logsignal(RS.Heartbeat:Connect(function()
+        pcall(function()
+            Players[Player.Name].Character:MoveTo(Vector3.new(9e5,9e5,9e5))
+            Players[Player.Name].Character.HumanoidRootPart.Anchored = true
+        end)
     end))
 end
 
