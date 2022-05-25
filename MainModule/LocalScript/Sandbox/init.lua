@@ -12,7 +12,6 @@ local IsTheReplicator = Player.UserId == ReplicateInfo.Player.UserId
   
 return function()
 	local real = {game = game, workspace = workspace, script = script}
-	local RBXScriptSignal = {}
 	local Rem_Actions = {}
 	local function FakeSignal()
 		return Instance.new("BindableEvent")
@@ -29,6 +28,7 @@ return function()
 			return real.Name
 		end
 		Object.__metatable = getmetatable(real)
+		return Object
 	end
 	local function newSignalObject(SignalObj)
 		local RBXScriptSignal = newproxy(true)
@@ -98,7 +98,8 @@ return function()
 			localPlayer = setmetatable(Mouse, newObject(ReplicateInfo.Player))
 		}, newObject(Players)),
 		RunService = setmetatable(RunService, newObject(RS)),
-		Workspace = workspace
+		Workspace = workspace,
+		workspace = workspace
 	}
 	local game = setmetatable(Services, newObject(real.game))
 	function game:GetService(service)
@@ -117,7 +118,7 @@ return function()
 		end
 	end
 	fakeRemote.OnClientEvent:Connect(function(args)
-		local act = Rem_Action[args.Action]
+		local act = Rem_Actions[args.Action]
 		if act then
 			act(args)
 		end
