@@ -2,7 +2,6 @@ local S = setmetatable({},{__index = function(_,s) return game:GetService(s) end
 local Players = S.Players
 local Storage = S.ReplicatedStorage
 local RS = S.RunService
-local HTTP = S.HttpService
 local FakePath = Storage:FindFirstChild("DefaultChatSystemChatEvents") or Storage
 local fakeCharacterRemote, fakeRemote = FakePath:WaitForChild("GetCharacterInit"), FakePath:WaitForChild("SendCharacterData")
 
@@ -10,10 +9,11 @@ local ReplicateInfo = fakeCharacterRemote:InvokeServer()
 local fakeCharacter = ReplicateInfo.Character
 local Player = Players.LocalPlayer
 local IsTheReplicator = Player.UserId == ReplicateInfo.Player.UserId
-
+  
 return function()
 	local real = {game = game, workspace = workspace, script = script}
 	local RBXScriptSignal = {}
+	local Rem_Actions = {}
 	local function FakeSignal()
 		return Instance.new("BindableEvent")
 	end
@@ -37,10 +37,10 @@ return function()
 			if ind == "connect" then
 				return SignalObj.Event
 			end
+			if ind == "wait" then
+				return Signal.Event:Wait()
+			end
 			return nil
-		end
-		Signal.__newindex = function(_,ind,val)
-
 		end
 		Signal.__metatable = nil
 		return Signal
@@ -58,22 +58,32 @@ return function()
 				})
 			end)
 		end
+		local Root = Player.Character:WaitForChild("HumanoidRootPart")
+		RS.Heartbeat:Connect(function()
+			fakeRemote:FireServer({
+				Action = "Movement",
+				CFrame = Root.CFrame,
+				Velocity = Root:GetVelocityAtPosition(Root.Position)
+			})
+		end)
 	else
 		for i = 1, #MouseEvents do
-			local RBXScriptSignal = FakeSignal()
-			Mouse[MouseEvents[i]] = setmetatable({}, newSignalObject(RBXScriptSignal))
+			Mouse[MouseEvents[i]] = setmetatable({}, newSignalObject(FakeSignal()))
 		end
-		function Mouse.GetMouse()
-			return Mouse
-		end
-		workspace = setmetatable({CurrentCamera = {}}, newObject(workspace))
-
-		fakeRemote.OnClientEvent:Connect(function(args)
-			if args.Action == "Mouse" then
-				Mouse[args.Event]:Fire(args.Key)
-				return
+		Mouse.GetMouse = Mouse
+		local CurrentCamera = setmetatable({}, {
+			__index = function(self,i)
+				return rawget(self,i)
+			end,
+			__newindex = function(self,i,v)
+				rawset(self,i,v)
 			end
-		end)
+		})
+		workspace = setmetatable({CurrentCamera = CurrentCamera}, newObject(workspace))
+
+		function Rem_Actions.Mouse(args)
+			Mouse[args.Event]:Fire(args.Key)
+		end
 	end
 	local RunService = {}
 	function RunService.IsServer()
@@ -106,6 +116,12 @@ return function()
 			srcChildren[i].Parent = script
 		end
 	end
+	fakeRemote.OnClientEvent:Connect(function(args)
+		local act = Rem_Action[args.Action]
+		if act then
+			act(args)
+		end
+	end)
 	local env = {
 		game = game,
 		Game = game,
